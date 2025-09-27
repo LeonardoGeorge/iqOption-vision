@@ -39,18 +39,18 @@
                                     </small>
                                     <br>
                                     <small class="text-muted">
-                                        {{ new Date(signal['timestamp']).toLocaleTimeString() }}
+                                        {{ \Carbon\Carbon::parse($signal['timestamp'])->format('H:i') }}
                                     </small>
                                 </div>
                                 <div class="text-end">
                                     <div class="mb-1">
                                         <span class="badge bg-{{ $signal['confidence'] > 0.7 ? 'success' : ($signal['confidence'] > 0.5 ? 'warning' : 'danger') }}">
-                                            {{ (signal['confidence'] * 100).toFixed(0) }}%
+                                            {{ number_format($signal['confidence'] * 100, 0) }}%
                                         </span>
                                     </div>
                                     @if($signal['type'] !== 'hold')
                                         <button class="btn btn-sm btn-outline-primary" 
-                                                wire:click="executeTrade({{ $signal['id'] }}, '{{ $signal['type'] }}')">
+                                                wire:click="executeTrade('{{ $signal['id'] }}', '{{ $signal['type'] }}')">
                                             Executar
                                         </button>
                                     @endif

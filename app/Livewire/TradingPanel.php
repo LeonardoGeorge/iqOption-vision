@@ -17,8 +17,13 @@ class TradingPanel extends Component
 
     public function mount()
     {
+        $this->loadRecentSignals();
+    }
+
+    public function loadRecentSignals()
+    {
         $this->recentSignals = Signal::with('asset')
-            ->recent(6)
+            ->recent(6) // Últimas 6 horas
             ->orderBy('timestamp', 'desc')
             ->limit(5)
             ->get()
@@ -27,28 +32,44 @@ class TradingPanel extends Component
 
     public function addSignal($signalData)
     {
-        $this->recentSignals = array_slice(
-            array_merge([$signalData], $this->recentSignals),
-            0,
-            5
-        );
+        // Adicionar novo sinal ao início da lista
+        array_unshift($this->recentSignals, $signalData);
+
+        // Manter apenas os 5 mais recentes
+        $this->recentSignals = array_slice($this->recentSignals, 0, 5);
     }
 
     public function executeTrade($signalId, $action)
     {
         $signal = Signal::find($signalId);
-        if (!$signal) return;
+        if (!$signal) {
+            $this->dispatchBrowserEvent('show-alert', [
+                'type' => 'error',
+                'message' => 'Sinal não encontrado!'
+            ]);
+            return;
+        }
 
         $riskManager = new RiskManager();
 
+        // Simular execução do trade
         $tradeData = [
             'signal_id' => $signal->id,
             'action' => $action,
             'executed_at' => now(),
-            'status' => 'executed'
+            'status' => 'executed',
+            'position_size' => $riskManager->calculatePositionSize(
+                $this->accountBalance,
+                $signal->price,
+                $signal->stop_loss
+            )
         ];
 
-        // Aqui você integraria com a API real da IQ Option
+        $this->dispatchBrowserEvent('show-alert', [
+            'type' => 'success',
+            'message' => "Trade executado! Ação: {$action}, Ativo: {$signal->asset->symbol}"
+        ]);
+
         $this->emit('tradeExecuted', $tradeData);
     }
 
