@@ -1,0 +1,802 @@
+Projeto_02: iqOption-vision/
+Desenvolvedor: Leonardo George Dev.
+Data_inicio: 27/09/2025
+
+
+========================================================================================================================
+
+iqOption-vision/
+├── app/
+│   ├── Models/
+│   │   ├── Asset.php
+│   │   ├── TrendLine.php
+│   │   └── Signal.php
+│   ├── Services/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── DashboardController.php
+│   │   │   ├── AssetController.php
+│   │   │   └── SignalController.php
+│   │   └── Livewire/
+│   │       ├── RealTimeMonitor.php
+│   │       └── TradingPanel.php
+├── database/
+│   ├── migrations/
+│   └── seeders/
+├── resources/
+│   ├── views/
+│   └── js/
+│       └── components/
+└── config/
+
+
+
+Vamos estruturar cada arquivo do projeto **iqOption-vision**. Aqui está o conteúdo detalhado para cada arquivo:
+
+## 1. Models
+
+### app/Models/Asset.php
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Asset extends Model
+{
+    use HasFactory;
+
+    protected $fillable = [
+        'name',
+        'symbol',
+        'type',
+        'active',
+        'iqoption_id',
+        'current_price',
+        'price_updated_at'
+    ];
+
+    protected $casts = [
+        'active' => 'boolean',
+        'current_price' => 'decimal:5',
+        'price_updated_at' => 'datetime'
+    ];
+
+    public function trendLines()
+    {
+        return $this->hasMany(TrendLine::class);
+    }
+
+    public function signals()
+    {
+        return $this->hasMany(Signal::class);
+    }
+
+    public function scopeActive($query)
+    {
+        return $query->where('active', true);
+    }
+
+    public function scopeForex($query)
+    {
+        return $query->where('type', 'forex');
+    }
+
+    public function scopeCrypto($query)
+    {
+        return $query->where('type', 'crypto');
+    }
+}
+```
+
+### app/Models/TrendLine.php
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class TrendLine extends Model
+{
+    use HasFactory;
+
+    const DIRECTION_UP = 'up';
+    const DIRECTION_DOWN = 'down';
+    const DIRECTION_SIDEWAYS = 'sideways';
+
+    protected $fillable = [
+        'asset_id',
+        'direction',
+        'strength',
+        'breakout_point',
+        'support_level',
+        'resistance_level',
+        'timeframe',
+        'touch_count',
+        'is_valid'
+    ];
+
+    protected $casts = [
+        'strength' => 'decimal:2',
+        'breakout_point' => 'decimal:5',
+        'support_level' => 'decimal:5',
+        'resistance_level' => 'decimal:5',
+        'touch_count' => 'integer',
+        'is_valid' => 'boolean'
+    ];
+
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function getStrengthPercentageAttribute()
+    {
+        return ($this->strength * 100) . '%';
+    }
+
+    public function isValidTrend()
+    {
+        return $this->is_valid && $this->touch_count >= 3;
+    }
+}
+```
+
+### app/Models/Signal.php
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\Model;
+
+class Signal extends Model
+{
+    use HasFactory;
+
+    const TYPE_BUY = 'buy';
+    const TYPE_SELL = 'sell';
+    const TYPE_HOLD = 'hold';
+
+    const RISK_LOW = 'low';
+    const RISK_MEDIUM = 'medium';
+    const RISK_HIGH = 'high';
+
+    protected $fillable = [
+        'asset_id',
+        'type',
+        'confidence',
+        'price',
+        'timestamp',
+        'trend_strength',
+        'risk_level',
+        'recommended_action',
+        'stop_loss',
+        'take_profit',
+        'timeframe',
+        'signal_source'
+    ];
+
+    protected $casts = [
+        'confidence' => 'decimal:2',
+        'price' => 'decimal:5',
+        'timestamp' => 'datetime',
+        'trend_strength' => 'decimal:2',
+        'stop_loss' => 'decimal:5',
+        'take_profit' => 'decimal:5'
+    ];
+
+    public function asset()
+    {
+        return $this->belongsTo(Asset::class);
+    }
+
+    public function isBuySignal()
+    {
+        return $this->type === self::TYPE_BUY;
+    }
+
+    public function isSellSignal()
+    {
+        return $this->type === self::TYPE_SELL;
+    }
+
+    public function getConfidencePercentageAttribute()
+    {
+        return ($this->confidence * 100) . '%';
+    }
+
+    public function scopeRecent($query, $hours = 24)
+    {
+        return $query->where('timestamp', '>=', now()->subHours($hours));
+    }
+
+    public function scopeHighConfidence($query, $threshold = 0.7)
+    {
+        return $query->where('confidence', '>=', $threshold);
+    }
+}
+```
+
+## 2. Services
+
+### app/Services/IQOptionService.php
+```php
+<?php
+
+namespace App\Services;
+
+use GuzzleHttp\Client;
+use Illuminate\Support\Facades\Log;
+use App\Models\Asset;
+
+class IQOptionService
+{
+    private $client;
+    private $baseUrl = 'https://api.iqoption.com/api/';
+
+    public function __construct()
+    {
+        $this->client = new Client([
+            'base_uri' => $this->baseUrl,
+            'timeout' => 30,
+            'verify' => false
+        ]);
+    }
+
+    public function getPriceData($assetSymbol, $timeframe = 60, $count = 100)
+    {
+        try {
+            // Simulação de dados - substituir por API real da IQ Option
+            $response = [
+                'success' => true,
+                'data' => $this->generateMockPriceData($assetSymbol, $timeframe, $count)
+            ];
+
+            return $response;
+        } catch (\Exception $e) {
+            Log::error('IQOption API Error: ' . $e->getMessage());
+            return ['success' => false, 'error' => $e->getMessage()];
+        }
+    }
+
+    public function getAvailableAssets()
+    {
+        // Assets Forex mais populares na IQ Option
+        return [
+            ['symbol' => 'EURUSD', 'name' => 'Euro vs US Dollar', 'type' => 'forex'],
+            ['symbol' => 'GBPUSD', 'name' => 'British Pound vs US Dollar', 'type' => 'forex'],
+            ['symbol' => 'USDJPY', 'name' => 'US Dollar vs Japanese Yen', 'type' => 'forex'],
+            ['symbol' => 'USDCHF', 'name' => 'US Dollar vs Swiss Franc', 'type' => 'forex'],
+            ['symbol' => 'AUDUSD', 'name' => 'Australian Dollar vs US Dollar', 'type' => 'forex'],
+            ['symbol' => 'USDCAD', 'name' => 'US Dollar vs Canadian Dollar', 'type' => 'forex'],
+            ['symbol' => 'EURGBP', 'name' => 'Euro vs British Pound', 'type' => 'forex'],
+            ['symbol' => 'EURJPY', 'name' => 'Euro vs Japanese Yen', 'type' => 'forex'],
+        ];
+    }
+
+    private function generateMockPriceData($symbol, $timeframe, $count)
+    {
+        $data = [];
+        $basePrice = mt_rand(10000, 20000) / 100; // Preço base aleatório
+        
+        for ($i = $count; $i > 0; $i--) {
+            $timestamp = now()->subMinutes($timeframe * $i);
+            $open = $basePrice + mt_rand(-50, 50) / 100;
+            $close = $open + mt_rand(-30, 30) / 100;
+            $high = max($open, $close) + mt_rand(0, 20) / 100;
+            $low = min($open, $close) - mt_rand(0, 20) / 100;
+            $volume = mt_rand(1000, 10000);
+
+            $data[] = [
+                'timestamp' => $timestamp->timestamp,
+                'open' => $open,
+                'high' => $high,
+                'low' => $low,
+                'close' => $close,
+                'volume' => $volume
+            ];
+
+            $basePrice = $close;
+        }
+
+        return $data;
+    }
+}
+```
+
+### app/Services/TrendAnalyzer.php
+```php
+<?php
+
+namespace App\Services;
+
+class TrendAnalyzer
+{
+    public function analyzePriceData($priceData)
+    {
+        if (count($priceData) < 20) {
+            return ['error' => 'Dados insuficientes para análise'];
+        }
+
+        $closes = array_column($priceData, 'close');
+        
+        return [
+            'trend_direction' => $this->determineTrendDirection($closes),
+            'trend_strength' => $this->calculateTrendStrength($closes),
+            'support_levels' => $this->findSupportLevels($priceData),
+            'resistance_levels' => $this->findResistanceLevels($priceData),
+            'moving_averages' => $this->calculateMovingAverages($closes),
+            'rsi' => $this->calculateRSI($closes),
+            'signal' => $this->generateSignal($closes)
+        ];
+    }
+
+    private function determineTrendDirection($closes)
+    {
+        $sma20 = $this->sma($closes, 20);
+        $sma50 = $this->sma($closes, 50);
+        
+        if ($sma20 > $sma50) {
+            return 'up';
+        } elseif ($sma20 < $sma50) {
+            return 'down';
+        }
+        
+        return 'sideways';
+    }
+
+    private function calculateTrendStrength($closes)
+    {
+        $returns = [];
+        for ($i = 1; $i < count($closes); $i++) {
+            $returns[] = ($closes[$i] - $closes[$i-1]) / $closes[$i-1];
+        }
+        
+        $volatility = stats_standard_deviation($returns);
+        $avgReturn = array_sum($returns) / count($returns);
+        
+        return abs($avgReturn / ($volatility ?: 0.0001));
+    }
+
+    private function calculateMovingAverages($closes)
+    {
+        return [
+            'sma_20' => $this->sma($closes, 20),
+            'sma_50' => $this->sma($closes, 50),
+            'ema_12' => $this->ema($closes, 12),
+        ];
+    }
+
+    private function calculateRSI($closes, $period = 14)
+    {
+        $changes = [];
+        for ($i = 1; $i < count($closes); $i++) {
+            $changes[] = $closes[$i] - $closes[$i-1];
+        }
+
+        $gains = $losses = [];
+        foreach ($changes as $change) {
+            $gains[] = $change > 0 ? $change : 0;
+            $losses[] = $change < 0 ? abs($change) : 0;
+        }
+
+        $avgGain = array_sum(array_slice($gains, 0, $period)) / $period;
+        $avgLoss = array_sum(array_slice($losses, 0, $period)) / $period;
+
+        for ($i = $period; $i < count($gains); $i++) {
+            $avgGain = ($avgGain * ($period - 1) + $gains[$i]) / $period;
+            $avgLoss = ($avgLoss * ($period - 1) + $losses[$i]) / $period;
+        }
+
+        if ($avgLoss == 0) return 100;
+        
+        $rs = $avgGain / $avgLoss;
+        return 100 - (100 / (1 + $rs));
+    }
+
+    private function sma($data, $period)
+    {
+        $slice = array_slice($data, -$period);
+        return array_sum($slice) / count($slice);
+    }
+
+    private function ema($data, $period)
+    {
+        $k = 2 / ($period + 1);
+        $ema = array_slice($data, 0, $period);
+        $ema = array_sum($ema) / $period;
+
+        for ($i = $period; $i < count($data); $i++) {
+            $ema = $data[$i] * $k + $ema * (1 - $k);
+        }
+
+        return $ema;
+    }
+
+    private function findSupportLevels($priceData) { return []; }
+    private function findResistanceLevels($priceData) { return []; }
+    private function generateSignal($closes) { return 'hold'; }
+}
+```
+
+### app/Services/RiskManager.php
+```php
+<?php
+
+namespace App\Services;
+
+class RiskManager
+{
+    private $maxRiskPercent = 2; // 2% do capital por trade
+
+    public function calculatePositionSize($accountBalance, $entryPrice, $stopLossPrice, $riskPercent = null)
+    {
+        $riskPercent = $riskPercent ?: $this->maxRiskPercent;
+        $riskAmount = $accountBalance * ($riskPercent / 100);
+        
+        $priceDifference = abs($entryPrice - $stopLossPrice);
+        if ($priceDifference == 0) return 0;
+        
+        $positionSize = $riskAmount / $priceDifference;
+        
+        return round($positionSize, 2);
+    }
+
+    public function calculateRiskLevel($trendStrength, $volatility, $signalConfidence)
+    {
+        $riskScore = 0;
+        
+        // Trend strength (0-1)
+        $riskScore += (1 - $trendStrength) * 40;
+        
+        // Volatility (higher = more risk)
+        $riskScore += min($volatility * 100, 30);
+        
+        // Signal confidence (inverse)
+        $riskScore += (1 - $signalConfidence) * 30;
+        
+        if ($riskScore <= 30) return 'low';
+        if ($riskScore <= 60) return 'medium';
+        return 'high';
+    }
+
+    public function calculateStopLossTakeProfit($entryPrice, $signalType, $volatility, $timeframe)
+    {
+        $atrMultiplier = $this->getAtrMultiplier($timeframe);
+        $volatilityFactor = $volatility * $atrMultiplier;
+        
+        if ($signalType === 'buy') {
+            $stopLoss = $entryPrice * (1 - $volatilityFactor);
+            $takeProfit = $entryPrice * (1 + $volatilityFactor * 1.5);
+        } else {
+            $stopLoss = $entryPrice * (1 + $volatilityFactor);
+            $takeProfit = $entryPrice * (1 - $volatilityFactor * 1.5);
+        }
+        
+        return [
+            'stop_loss' => round($stopLoss, 5),
+            'take_profit' => round($takeProfit, 5)
+        ];
+    }
+
+    private function getAtrMultiplier($timeframe)
+    {
+        $multipliers = [
+            '1m' => 0.001,
+            '5m' => 0.002,
+            '15m' => 0.003,
+            '1h' => 0.005,
+            '4h' => 0.008,
+            '1d' => 0.015
+        ];
+        
+        return $multipliers[$timeframe] ?? 0.005;
+    }
+}
+```
+
+## 3. Controllers
+
+### app/Http/Controllers/DashboardController.php
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Asset;
+use App\Models\Signal;
+use App\Services\IQOptionService;
+use App\Services\TrendAnalyzer;
+
+class DashboardController extends Controller
+{
+    public function index()
+    {
+        $assets = Asset::active()->get();
+        $recentSignals = Signal::with('asset')
+            ->recent(24)
+            ->orderBy('timestamp', 'desc')
+            ->limit(10)
+            ->get();
+
+        return view('dashboard', compact('assets', 'recentSignals'));
+    }
+
+    public function getAssetData($assetId)
+    {
+        $asset = Asset::findOrFail($assetId);
+        $iqOptionService = new IQOptionService();
+        $trendAnalyzer = new TrendAnalyzer();
+
+        $priceData = $iqOptionService->getPriceData($asset->symbol, 5, 100);
+        $analysis = $trendAnalyzer->analyzePriceData($priceData['data']);
+
+        return response()->json([
+            'asset' => $asset,
+            'price_data' => $priceData['data'],
+            'analysis' => $analysis
+        ]);
+    }
+}
+```
+
+### app/Http/Controllers/AssetController.php
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Asset;
+use App\Services\IQOptionService;
+
+class AssetController extends Controller
+{
+    public function index()
+    {
+        $assets = Asset::all();
+        return view('assets.index', compact('assets'));
+    }
+
+    public function syncAssets()
+    {
+        $iqOptionService = new IQOptionService();
+        $availableAssets = $iqOptionService->getAvailableAssets();
+
+        foreach ($availableAssets as $assetData) {
+            Asset::updateOrCreate(
+                ['symbol' => $assetData['symbol']],
+                [
+                    'name' => $assetData['name'],
+                    'type' => $assetData['type'],
+                    'active' => true
+                ]
+            );
+        }
+
+        return redirect()->back()->with('success', 'Ativos sincronizados com sucesso!');
+    }
+
+    public function toggleActive($id)
+    {
+        $asset = Asset::findOrFail($id);
+        $asset->update(['active' => !$asset->active]);
+
+        return redirect()->back()->with('success', 'Status do ativo atualizado!');
+    }
+}
+```
+
+### app/Http/Controllers/SignalController.php
+```php
+<?php
+
+namespace App\Http\Controllers;
+
+use Illuminate\Http\Request;
+use App\Models\Signal;
+use App\Models\Asset;
+
+class SignalController extends Controller
+{
+    public function index()
+    {
+        $signals = Signal::with('asset')
+            ->orderBy('timestamp', 'desc')
+            ->paginate(20);
+
+        return view('signals.index', compact('signals'));
+    }
+
+    public function show($id)
+    {
+        $signal = Signal::with('asset')->findOrFail($id);
+        return view('signals.show', compact('signal'));
+    }
+
+    public function getRecentSignals()
+    {
+        $signals = Signal::with('asset')
+            ->recent(6)
+            ->highConfidence()
+            ->orderBy('confidence', 'desc')
+            ->get();
+
+        return response()->json($signals);
+    }
+}
+```
+
+## 4. Livewire Components
+
+### app/Http/Livewire/RealTimeMonitor.php
+```php
+<?php
+
+namespace App\Http\Livewire;
+
+use Livewire\Component;
+use App\Models\Asset;
+use App\Services\IQOptionService;
+use App\Services\TrendAnalyzer;
+
+class RealTimeMonitor extends Component
+{
+    public $selectedAssetId;
+    public $assets;
+    public $priceData = [];
+    public $analysis = [];
+    public $currentSignal = [];
+
+    protected $listeners = ['refreshData' => 'refresh'];
+
+    public function mount()
+    {
+        $this->assets = Asset::active()->get();
+        $this->selectedAssetId = $this->assets->first()->id ?? null;
+        $this->refresh();
+    }
+
+    public function refresh()
+    {
+        if ($this->selectedAssetId) {
+            $asset = Asset::find($this->selectedAssetId);
+            $iqOptionService = new IQOptionService();
+            $trendAnalyzer = new TrendAnalyzer();
+
+            $priceResponse = $iqOptionService->getPriceData($asset->symbol, 5, 50);
+            $this->priceData = $priceResponse['data'] ?? [];
+            $this->analysis = $trendAnalyzer->analyzePriceData($this->priceData);
+            $this->currentSignal = $this->generateSignal($this->analysis);
+        }
+    }
+
+    private function generateSignal($analysis)
+    {
+        if (empty($analysis)) {
+            return ['type' => 'hold', 'confidence' => 0];
+        }
+
+        $confidence = $analysis['trend_strength'] * 100;
+        
+        if ($analysis['trend_direction'] === 'up' && $confidence > 60) {
+            return ['type' => 'buy', 'confidence' => round($confidence, 2)];
+        } elseif ($analysis['trend_direction'] === 'down' && $confidence > 60) {
+            return ['type' => 'sell', 'confidence' => round($confidence, 2)];
+        }
+
+        return ['type' => 'hold', 'confidence' => round($confidence, 2)];
+    }
+
+    public function updatedSelectedAssetId()
+    {
+        $this->refresh();
+    }
+
+    public function render()
+    {
+        return view('livewire.real-time-monitor');
+    }
+}
+```
+
+### app/Http/Livewire/TradingPanel.php
+```php
+<?php
+
+namespace App\Http\Livewire;
+
+use Livewire\Component;
+use App\Models\Signal;
+use App\Models\Asset;
+use App\Services\RiskManager;
+
+class TradingPanel extends Component
+{
+    public $recentSignals = [];
+    public $accountBalance = 1000;
+    public $selectedSignal = null;
+
+    protected $listeners = ['signalGenerated' => 'addSignal'];
+
+    public function mount()
+    {
+        $this->recentSignals = Signal::with('asset')
+            ->recent(6)
+            ->orderBy('timestamp', 'desc')
+            ->limit(5)
+            ->get()
+            ->toArray();
+    }
+
+    public function addSignal($signalData)
+    {
+        $this->recentSignals = array_slice(
+            array_merge([$signalData], $this->recentSignals),
+            0, 5
+        );
+    }
+
+    public function executeTrade($signalId, $action)
+    {
+        $signal = Signal::find($signalId);
+        if (!$signal) return;
+
+        $riskManager = new RiskManager();
+        
+        $tradeData = [
+            'signal_id' => $signal->id,
+            'action' => $action,
+            'executed_at' => now(),
+            'status' => 'executed'
+        ];
+
+        // Aqui você integraria com a API real da IQ Option
+        $this->emit('tradeExecuted', $tradeData);
+    }
+
+    public function render()
+    {
+        return view('livewire.trading-panel');
+    }
+}
+```
+
+## 5. Configuração
+
+### config/iqoption.php
+```php
+<?php
+
+return [
+    'api' => [
+        'base_url' => env('IQOPTION_API_URL', 'https://api.iqoption.com/api/'),
+        'timeout' => env('IQOPTION_API_TIMEOUT', 30),
+    ],
+    
+    'trading' => [
+        'demo_mode' => env('IQOPTION_DEMO_MODE', true),
+        'max_risk_percent' => env('MAX_RISK_PERCENT', 2),
+        'default_timeframe' => env('DEFAULT_TIMEFRAME', '5m'),
+    ],
+    
+    'analysis' => [
+        'rsi_period' => 14,
+        'sma_period_short' => 20,
+        'sma_period_long' => 50,
+        'minimum_confidence' => 0.7,
+    ],
+    
+    'notifications' => [
+        'enable_email' => env('ENABLE_EMAIL_NOTIFICATIONS', false),
+        'enable_push' => env('ENABLE_PUSH_NOTIFICATIONS', true),
+    ],
+];
+```

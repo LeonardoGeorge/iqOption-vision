@@ -1,0 +1,196 @@
+Projeto_01: iqOption-vision/
+Desenvolvedor: Leonardo George Dev.
+Data_inicio: 27/09/2025
+
+
+========================================================================================================================
+
+
+
+### 1. Criar o projeto Laravel
+
+```bash
+# Navegar para o diretório onde deseja criar o projeto
+cd /caminho/para/seu/diretorio
+
+# Criar novo projeto Laravel
+composer create-project laravel/laravel iqOption-vision
+
+# Entrar no diretório do projeto
+cd iqOption-vision
+```
+
+### 2. Estrutura de Pastas Personalizadas
+
+```bash
+# Criar diretórios para a estrutura personalizada
+mkdir -p app/Services
+mkdir -p app/Models
+mkdir -p app/Http/Livewire
+mkdir -p database/seeders
+mkdir -p resources/js/components
+mkdir -p config
+```
+
+### 3. Instalar Dependências Adicionais
+
+```bash
+# Instalar Livewire (para componentes em tempo real)
+composer require livewire/livewire
+
+# Instalar Guzzle (para chamadas HTTP à API)
+composer require guzzlehttp/guzzle
+
+# Se quiser usar React/Vue (opcional)
+composer require laravel/ui
+php artisan ui vue --auth
+# ou
+php artisan ui react --auth
+
+# Instalar dependências Node.js
+npm install
+npm install chart.js pusher-js laravel-echo
+```
+
+### 4. Configurar Ambiente
+
+```bash
+# Copiar arquivo de ambiente
+cp .env.example .env
+
+# Gerar chave da aplicação
+php artisan key:generate
+
+# Criar arquivo de configuração da IQ Option
+touch config/iqoption.php
+```
+
+### 5. Criar Arquivos Base
+
+```bash
+# Criar Models
+php artisan make:model Asset
+php artisan make:model TrendLine
+php artisan make:model Signal
+
+# Criar Controllers
+php artisan make:controller DashboardController
+php artisan make:controller AssetController
+php artisan make:controller SignalController
+
+# Criar Componentes Livewire
+php artisan make:livewire RealTimeMonitor
+php artisan make:livewire TradingPanel
+
+# Criar Migrations
+php artisan make:migration create_assets_table
+php artisan make:migration create_trend_lines_table
+php artisan make:migration create_signals_table
+
+# Criar Seeders
+php artisan make:seeder AssetsSeeder
+```
+
+### 6. Configurar Banco de Dados
+
+```bash
+# Editar o arquivo .env com suas configurações de banco
+# DB_CONNECTION=mysql
+# DB_HOST=127.0.0.1
+# DB_PORT=3306
+# DB_DATABASE=iqoption_vision
+# DB_USERNAME=seu_usuario
+# DB_PASSWORD=sua_senha
+
+# Executar migrations
+php artisan migrate
+
+# Executar seeders (dados iniciais)
+php artisan db:seed --class=AssetsSeeder
+```
+
+### 7. Desenvolvimento
+
+```bash
+# Iniciar servidor de desenvolvimento
+php artisan serve
+
+# Em outro terminal, compilar assets
+npm run dev
+
+# Ou para watch mode (desenvolvimento)
+npm run watch
+```
+
+## Comandos Rápidos (Sequência Completa)
+
+Aqui está uma sequência rápida para iniciar o projeto:
+
+```bash
+# 1. Criar projeto
+composer create-project laravel/laravel iqOption-vision
+cd iqOption-vision
+
+# 2. Instalar dependências
+composer require livewire/livewire guzzlehttp/guzzle
+
+# 3. Criar estrutura de pastas
+mkdir -p app/Services app/Http/Livewire resources/js/components
+
+# 4. Configurar ambiente
+cp .env.example .env
+php artisan key:generate
+
+# 5. Criar arquivos base
+php artisan make:model Asset -m
+php artisan make:model TrendLine -m
+php artisan make:model Signal -m
+php artisan make:controller DashboardController
+php artisan make:livewire RealTimeMonitor
+php artisan make:livewire TradingPanel
+
+# 6. Instalar frontend
+npm install
+npm install chart.js pusher-js
+
+# 7. Iniciar desenvolvimento
+php artisan serve
+# Em outro terminal: npm run dev
+```
+
+## Estrutura Final Esperada
+
+Após executar os comandos, você deve ter:
+
+```
+iqOption-vision/
+├── app/
+│   ├── Models/
+│   │   ├── Asset.php
+│   │   ├── TrendLine.php
+│   │   └── Signal.php
+│   ├── Services/
+│   ├── Http/
+│   │   ├── Controllers/
+│   │   │   ├── DashboardController.php
+│   │   │   ├── AssetController.php
+│   │   │   └── SignalController.php
+│   │   └── Livewire/
+│   │       ├── RealTimeMonitor.php
+│   │       └── TradingPanel.php
+├── database/
+│   ├── migrations/
+│   └── seeders/
+├── resources/
+│   ├── views/
+│   └── js/
+│       └── components/
+└── config/
+```
+
+## Primeiros Passos Após a Instalação
+
+1. **Configurar o arquivo `.env`** com suas credenciais de banco de dados
+2. **Editar as migrations** para definir a estrutura das tabelas
+3. **Implementar os Services** principais (IQOptionService, TrendAnalyzer, etc.)
+4. **Desenvolver os componentes Livewire** para a interface
