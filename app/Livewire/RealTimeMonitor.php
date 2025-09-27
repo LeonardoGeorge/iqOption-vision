@@ -4,8 +4,6 @@ namespace App\Http\Livewire;
 
 use Livewire\Component;
 use App\Models\Asset;
-use App\Services\IQOptionService;
-use App\Services\TrendAnalyzer;
 
 class RealTimeMonitor extends Component
 {
@@ -14,8 +12,6 @@ class RealTimeMonitor extends Component
     public $priceData = [];
     public $analysis = [];
     public $currentSignal = [];
-
-    protected $listeners = ['refreshData' => 'refresh'];
 
     public function mount()
     {
@@ -28,14 +24,67 @@ class RealTimeMonitor extends Component
     {
         if ($this->selectedAssetId) {
             $asset = Asset::find($this->selectedAssetId);
-            $iqOptionService = new IQOptionService();
-            $trendAnalyzer = new TrendAnalyzer();
 
-            $priceResponse = $iqOptionService->getPriceData($asset->symbol, 5, 50);
-            $this->priceData = $priceResponse['data'] ?? [];
-            $this->analysis = $trendAnalyzer->analyzePriceData($this->priceData);
+            // Dados simulados para teste
+            $this->priceData = $this->getSimulatedPriceData($asset->symbol);
+            $this->analysis = $this->analyzePriceData($this->priceData);
             $this->currentSignal = $this->generateSignal($this->analysis);
+
+            // Emitir evento para atualizar o gráfico
+            $this->dispatch('priceDataUpdated', priceData: $this->priceData);
         }
+    }
+
+    private function getSimulatedPriceData($symbol)
+    {
+        $data = [];
+        $basePrice = rand(10000, 50000);
+
+        for ($i = 50; $i > 0; $i--) {
+            $timestamp = now()->subMinutes($i * 5)->timestamp;
+            $open = $basePrice + rand(-100, 100);
+            $close = $open + rand(-50, 50);
+            $high = max($open, $close) + rand(0, 30);
+            $low = min($open, $close) - rand(0, 30);
+
+            $data[] = [
+                'timestamp' => $timestamp,
+                'open' => $open,
+                'high' => $high,
+                'low' => $low,
+                'close' => $close,
+                'volume' => rand(1000, 10000)
+            ];
+
+            $basePrice = $close;
+        }
+
+        return $data;
+    }
+
+    private function analyzePriceData($priceData)
+    {
+        if (empty($priceData)) {
+            return [
+                'trend_direction' => 'neutral',
+                'trend_strength' => 0,
+                'rsi' => 50
+            ];
+        }
+
+        $recentPrices = array_column(array_slice($priceData, -14), 'close');
+        $olderPrices = array_column(array_slice($priceData, -28, 14), 'close');
+
+        $recentAvg = array_sum($recentPrices) / count($recentPrices);
+        $olderAvg = array_sum($olderPrices) / count($olderPrices);
+
+        $trendStrength = abs($recentAvg - $olderAvg) / $olderAvg;
+
+        return [
+            'trend_direction' => $recentAvg > $olderAvg ? 'up' : ($recentAvg < $olderAvg ? 'down' : 'neutral'),
+            'trend_strength' => min($trendStrength, 1),
+            'rsi' => rand(20, 80) // Simulado
+        ];
     }
 
     private function generateSignal($analysis)

@@ -67,14 +67,12 @@
                                         </div>
                                     </div>
                                 </div>
-                                @if(isset($analysis['rsi']))
                                 <div class="mb-0">
                                     <small>RSI: </small>
                                     <strong class="float-end {{ $analysis['rsi'] > 70 ? 'text-danger' : ($analysis['rsi'] < 30 ? 'text-success' : 'text-warning') }}">
                                         {{ number_format($analysis['rsi'], 2) }}
                                     </strong>
                                 </div>
-                                @endif
                             </div>
                         </div>
                     </div>
@@ -97,11 +95,11 @@
                             @foreach(array_slice($priceData, -10) as $candle)
                                 <tr>
                                     <td>{{ date('H:i', $candle['timestamp']) }}</td>
-                                    <td>{{ number_format($candle['open'], 5) }}</td>
-                                    <td class="text-success">{{ number_format($candle['high'], 5) }}</td>
-                                    <td class="text-danger">{{ number_format($candle['low'], 5) }}</td>
+                                    <td>{{ number_format($candle['open'], 2) }}</td>
+                                    <td class="text-success">{{ number_format($candle['high'], 2) }}</td>
+                                    <td class="text-danger">{{ number_format($candle['low'], 2) }}</td>
                                     <td class="{{ $candle['close'] >= $candle['open'] ? 'text-success' : 'text-danger' }}">
-                                        {{ number_format($candle['close'], 5) }}
+                                        {{ number_format($candle['close'], 2) }}
                                     </td>
                                     <td>{{ number_format($candle['volume']) }}</td>
                                 </tr>
@@ -118,21 +116,39 @@
         </div>
     </div>
 
-    @push('scripts')
+    @script
     <script>
-        document.addEventListener('livewire:load', function() {
+        let chart;
+
+        // Inicializar gráfico quando o componente for carregado
+        $wire.on('priceDataUpdated', (data) => {
+            updateChart(data.priceData);
+        });
+
+        function updateChart(priceData) {
             const ctx = document.getElementById('priceChart')?.getContext('2d');
             if (!ctx) return;
 
-            let chart = new Chart(ctx, {
+            if (chart) {
+                chart.destroy();
+            }
+
+            const labels = priceData.map(item => 
+                new Date(item.timestamp * 1000).toLocaleTimeString()
+            );
+            const prices = priceData.map(item => item.close);
+            
+            chart = new Chart(ctx, {
                 type: 'line',
                 data: {
-                    labels: [],
+                    labels: labels,
                     datasets: [{
                         label: 'Preço',
-                        data: [],
+                        data: prices,
                         borderColor: '#007bff',
-                        tension: 0.1
+                        backgroundColor: 'rgba(0, 123, 255, 0.1)',
+                        tension: 0.1,
+                        fill: true
                     }]
                 },
                 options: {
@@ -141,36 +157,27 @@
                         legend: { display: false }
                     },
                     scales: {
-                        y: { beginAtZero: false }
+                        y: { 
+                            beginAtZero: false,
+                            ticks: {
+                                callback: function(value) {
+                                    return '$' + value.toLocaleString();
+                                }
+                            }
+                        }
                     }
                 }
             });
+        }
 
-            // Atualizar gráfico quando os dados mudarem
-            Livewire.on('priceDataUpdated', (data) => {
-                if (chart && data.priceData) {
-                    const labels = data.priceData.map(item => 
-                        new Date(item.timestamp * 1000).toLocaleTimeString()
-                    );
-                    const prices = data.priceData.map(item => item.close);
-                    
-                    chart.data.labels = labels;
-                    chart.data.datasets[0].data = prices;
-                    chart.update();
+        // Atualizar gráfico quando os dados mudarem
+        $wire.on('refresh', () => {
+            setTimeout(() => {
+                if ($wire.priceData.length > 0) {
+                    $wire.dispatch('priceDataUpdated', { priceData: $wire.priceData });
                 }
-            });
-
-            // Disparar atualização quando o componente for carregado
-            Livewire.hook('message.processed', (message) => {
-                if (message.updateQueue[0]?.payload?.event === 'refreshData') {
-                    setTimeout(() => {
-                        Livewire.emit('priceDataUpdated', {
-                            priceData: @this.priceData
-                        });
-                    }, 100);
-                }
-            });
+            }, 100);
         });
     </script>
-    @endpush
+    @endscript
 </div>

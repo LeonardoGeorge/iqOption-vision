@@ -1,105 +1,134 @@
-@extends('layouts.app')
-
-@section('content')
-<div class="container-fluid">
-    <!-- Header -->
-    <div class="row mb-4">
-        <div class="col-12">
-            <div class="d-flex justify-content-between align-items-center">
-                <h1><i class="fas fa-tachometer-alt"></i> Dashboard</h1>
-                <div>
-                    <button class="btn btn-outline-primary" wire:click="$refresh">
-                        <i class="fas fa-sync-alt"></i> Atualizar
-                    </button>
+<!-- resources/views/dashboard.blade.php -->
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Trading</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <!-- Inclua o CSS do Vite -->
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
+</head>
+<body>
+    <div class="container-fluid py-4">
+        <h1 class="text-center mb-4">🤖 Robô de Trading - IQ Option Vision</h1>
+        
+        <div class="row">
+            <!-- Monitor em Tempo Real -->
+            <div class="col-lg-8 col-md-12 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-primary text-white">
+                        <h5 class="card-title mb-0">📊 Monitor em Tempo Real</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 border rounded">
+                                    <strong>PETR4</strong><br>
+                                    <span class="h4 text-success">R$ 35,67</span><br>
+                                    <span class="badge bg-success">+1.25%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 border rounded">
+                                    <strong>VALE3</strong><br>
+                                    <span class="h4 text-danger">R$ 68,90</span><br>
+                                    <span class="badge bg-danger">-0.75%</span>
+                                </div>
+                            </div>
+                            <div class="col-md-4 mb-3">
+                                <div class="p-3 border rounded">
+                                    <strong>ITUB4</strong><br>
+                                    <span class="h4 text-success">R$ 32,15</span><br>
+                                    <span class="badge bg-success">+0.45%</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </div>
             </div>
-            <p class="text-muted">Monitoramento em tempo real dos ativos</p>
-        </div>
-    </div>
 
-    <div class="row">
-        <!-- Monitor em Tempo Real -->
-        <div class="col-lg-8 col-md-12 mb-4">
-            @livewire('real-time-monitor')
-        </div>
-
-        <!-- Painel de Trading -->
-        <div class="col-lg-4 col-md-12 mb-4">
-            @livewire('trading-panel')
-        </div>
-    </div>
-
-    <!-- Últimos Sinais -->
-    <div class="row">
-        <div class="col-12">
-            <div class="card">
-                <div class="card-header">
-                    <h5 class="card-title mb-0">
-                        <i class="fas fa-history"></i> Últimos Sinais (24h)
-                    </h5>
-                </div>
-                <div class="card-body">
-                    @if($recentSignals->count() > 0)
-                        <div class="table-responsive">
-                            <table class="table table-sm table-hover">
-                                <thead>
-                                    <tr>
-                                        <th>Ativo</th>
-                                        <th>Sinal</th>
-                                        <th>Confiança</th>
-                                        <th>Preço</th>
-                                        <th>Horário</th>
-                                        <th>Risco</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    @foreach($recentSignals as $signal)
-                                        <tr class="signal-{{ $signal->type }}">
-                                            <td>
-                                                <strong>{{ $signal->asset->symbol }}</strong>
-                                            </td>
-                                            <td>
-                                                @if($signal->isBuySignal())
-                                                    <span class="badge bg-success">COMPRAR</span>
-                                                @elseif($signal->isSellSignal())
-                                                    <span class="badge bg-danger">VENDER</span>
-                                                @else
-                                                    <span class="badge bg-secondary">MANTER</span>
-                                                @endif
-                                            </td>
-                                            <td>
-                                                <div class="progress trend-strength">
-                                                    <div class="progress-bar" 
-                                                         style="width: {{ $signal->confidence * 100 }}%">
-                                                    </div>
-                                                </div>
-                                                <small>{{ $signal->confidence_percentage }}</small>
-                                            </td>
-                                            <td>{{ number_format($signal->price, 5) }}</td>
-                                            <td>{{ $signal->timestamp->format('H:i') }}</td>
-                                            <td>
-                                                @if($signal->risk_level == 'low')
-                                                    <span class="badge bg-success">Baixo</span>
-                                                @elseif($signal->risk_level == 'medium')
-                                                    <span class="badge bg-warning">Médio</span>
-                                                @else
-                                                    <span class="badge bg-danger">Alto</span>
-                                                @endif
-                                            </td>
-                                        </tr>
-                                    @endforeach
-                                </tbody>
-                            </table>
+            <!-- Painel de Trading -->
+            <div class="col-lg-4 col-md-12 mb-4">
+                <div class="card shadow">
+                    <div class="card-header bg-success text-white">
+                        <h5 class="card-title mb-0">🎯 Painel de Trading</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label">Selecione o Ativo:</label>
+                            <select class="form-select">
+                                <option value="PETR4">PETR4 - Petrobras</option>
+                                <option value="VALE3">VALE3 - Vale</option>
+                                <option value="ITUB4">ITUB4 - Itaú</option>
+                            </select>
                         </div>
-                    @else
-                        <div class="text-center text-muted py-4">
-                            <i class="fas fa-info-circle fa-2x mb-2"></i>
-                            <p>Nenhum sinal gerado nas últimas 24 horas</p>
+                        
+                        <div class="mb-3">
+                            <label class="form-label">Quantidade:</label>
+                            <input type="number" class="form-control" value="100">
                         </div>
-                    @endif
+                        
+                        <div class="d-grid gap-2">
+                            <button class="btn btn-success btn-lg">
+                                ✅ COMPRAR AGORA
+                            </button>
+                            <button class="btn btn-danger btn-lg">
+                                🚨 VENDER AGORA
+                            </button>
+                        </div>
+                        
+                        <div class="mt-3 p-2 bg-light rounded">
+                            <small>Saldo disponível: <strong>R$ 10.000,00</strong></small>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
+
+        <!-- Gráficos e Análises -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow">
+                    <div class="card-header bg-info text-white">
+                        <h5 class="card-title mb-0">📈 Análise Técnica</h5>
+                    </div>
+                    <div class="card-body">
+                        <div class="row text-center">
+                            <div class="col-md-3">
+                                <div class="p-2">
+                                    <strong>RSI</strong><br>
+                                    <span class="h5">54.2</span><br>
+                                    <span class="badge bg-warning">Neutro</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-2">
+                                    <strong>MACD</strong><br>
+                                    <span class="h5">0.45</span><br>
+                                    <span class="badge bg-success">Compra</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-2">
+                                    <strong>Suporte</strong><br>
+                                    <span class="h5">R$ 34,50</span>
+                                </div>
+                            </div>
+                            <div class="col-md-3">
+                                <div class="p-2">
+                                    <strong>Resistência</strong><br>
+                                    <span class="h5">R$ 36,80</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
     </div>
-</div>
-@endsection
+
+    <!-- JavaScript do Bootstrap -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+</body>
+</html>

@@ -1,12 +1,35 @@
 <?php
+// routes/web.php
 
 use Illuminate\Support\Facades\Route;
+
+// Rota simples para teste
+Route::get('/', function () {
+    return view('welcome');
+});
+
+// Rota do dashboard SEM Livewire (solução temporária)
+Route::get('/dashboard', function () {
+    return view('dashboard-simple');
+});
+
+// Ou use a view dashboard original sem componentes Livewire
+Route::get('/dashboard-original', function () {
+    return view('dashboard');
+});
+
+/* use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\AssetController;
 use App\Http\Controllers\SignalController;
 
-// Dashboard Principal
-Route::get('/', [DashboardController::class, 'index'])->name('dashboard');
+Route::get('/', function () {
+    return view('welcome');
+});
+
+
+// Rota principal do dashboard
+Route::get('/dashboard', DashboardTrading::class)->name('dashboard');
 
 // Rotas de Assets
 Route::prefix('assets')->group(function () {
@@ -24,3 +47,4 @@ Route::prefix('signals')->group(function () {
 
 // API para dados em tempo real
 Route::get('/api/asset/{assetId}/data', [DashboardController::class, 'getAssetData'])->name('api.asset.data');
+*/
