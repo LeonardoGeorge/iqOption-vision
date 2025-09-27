@@ -23,11 +23,11 @@ class RiskManager
     {
         $riskScore = 0;
 
-        // Trend strength (0-1)
+        // Trend strength (0-1) - quanto menor a força, maior o risco
         $riskScore += (1 - $trendStrength) * 40;
 
         // Volatility (higher = more risk)
-        $riskScore += min($volatility * 100, 30);
+        $riskScore += min($volatility * 1000, 30); // Ajustado o multiplicador
 
         // Signal confidence (inverse)
         $riskScore += (1 - $signalConfidence) * 30;
@@ -41,6 +41,9 @@ class RiskManager
     {
         $atrMultiplier = $this->getAtrMultiplier($timeframe);
         $volatilityFactor = $volatility * $atrMultiplier;
+
+        // Garantir que o fator de volatilidade seja razoável
+        $volatilityFactor = min($volatilityFactor, 0.05); // Máximo de 5%
 
         if ($signalType === 'buy') {
             $stopLoss = $entryPrice * (1 - $volatilityFactor);
@@ -68,5 +71,25 @@ class RiskManager
         ];
 
         return $multipliers[$timeframe] ?? 0.005;
+    }
+
+    /**
+     * Calcula o índice de Sharpe simplificado
+     */
+    public function calculateSharpeRatio($returns, $riskFreeRate = 0.02)
+    {
+        if (empty($returns)) {
+            return 0;
+        }
+
+        $statsService = new StatisticsService();
+        $avgReturn = $statsService->mean($returns);
+        $stdDev = $statsService->standardDeviation($returns);
+
+        if ($stdDev == 0) {
+            return 0;
+        }
+
+        return ($avgReturn - $riskFreeRate) / $stdDev;
     }
 }
